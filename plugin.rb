@@ -32,6 +32,49 @@ after_initialize do
     SVG_FIELD_NAME = SiteSetting.topic_custom_field_svg_name
   end
 
+  # Add a token endpoint for our process selector
+  Discourse::Application.routes.append do
+    get '/auth/fabublox/token' => 'discourse_process_url/auth#token'
+  end
+
+  module ::DiscourseProcessUrl
+    class AuthController < ::ApplicationController
+      requires_login
+      skip_before_action :check_xhr, only: [:token]
+      
+      def token
+        user = current_user
+        
+        # Only proceed if user is authenticated via oauth2
+        oauth2_user_info = UserAssociatedAccount.find_by(user_id: user.id, provider_name: "oauth2_basic")
+        
+        if oauth2_user_info && oauth2_user_info.extra
+          # Return the token if it's available
+          token_data = JSON.parse(oauth2_user_info.extra) rescue nil
+          
+          if token_data && token_data["token"]
+            render json: { token: token_data["token"] }
+            return
+          end
+        end
+        
+        # If we can't find an existing token, try to get one from the oauth2 settings
+        client_id = SiteSetting.oauth2_client_id
+        client_secret = SiteSetting.oauth2_client_secret
+        token_url = SiteSetting.oauth2_token_url
+        
+        if client_id.present? && client_secret.present? && token_url.present?
+          # This would require a server-side token request using the OAuth2 client credentials flow
+          # For security reasons, implement this based on your specific Auth0 requirements
+          render json: { error: "Token generation requires implementation of client credentials flow" }, status: 501
+          return
+        end
+        
+        render json: { error: "No valid token available" }, status: 404
+      end
+    end
+  end
+
   ##
   # type:        step
   # number:      1

@@ -27,7 +27,7 @@ export default class ProcessSelectorModal extends Component {
       // Get the Auth0 token
       let debugMessages = [];
       debugMessages.push("Attempting to get Auth0 token...");
-      
+
       // If running in development mode, you can use a demo token for testing
       if (this.site.isDevMode) {
         debugMessages.push("Running in development mode, will try to use demo token.");
@@ -37,7 +37,7 @@ export default class ProcessSelectorModal extends Component {
           this.loading = false;
           return;
         }
-        
+
         // In dev mode, use a fake token if real one can't be retrieved
         try {
           const token = await extractTokenFromAuth0();
@@ -66,7 +66,7 @@ export default class ProcessSelectorModal extends Component {
           this.loading = false;
           return;
         }
-        
+
         debugMessages.push("Successfully got token from Auth0");
         this.setupIframe(token, debugMessages);
       }
@@ -83,7 +83,7 @@ export default class ProcessSelectorModal extends Component {
     const url = new URL(baseUrl);
     url.searchParams.append("token", token);
     url.searchParams.append("origin", window.location.origin);
-    
+
     debugMessages.push(`Setting up iframe with URL parameters`);
     this.debugInfo = debugMessages.join("\n");
     this.iframeUrl = url.toString();

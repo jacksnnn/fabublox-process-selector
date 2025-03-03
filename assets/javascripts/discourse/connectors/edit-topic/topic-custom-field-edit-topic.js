@@ -43,7 +43,7 @@ export default class TopicCustomFieldEditTopic extends Component {
   onChangeField(fieldValue) {
     this.args.outletArgs.buffered.set(this.fieldName, fieldValue);
   }
-  
+
   @action
   onSaveSvg(svgContent) {
     this.args.outletArgs.buffered.set(this.fieldSvgName, svgContent);
