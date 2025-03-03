@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-# name: fabublox-process-editor
+# name: discourse-topic-custom-fields
 # about: Discourse plugin showing how to add custom fields to Discourse topics
 # version: 1.0
 # authors: Angus McLeod
 # contact email: angus@pavilion.tech
 # url: https://github.com/pavilionedu/discourse-topic-custom-fields
 
-# This sets the plugin name in the admin interface
+# This sets the plugin name in the admin interface 
 # & registers the plugin's stylesheet from /assets/stylesheets/common.scss
 enabled_site_setting :topic_custom_field_enabled
-register_asset 'stylesheets/common.scss'
+register_asset "stylesheets/common.scss"
 
 ##
 # type:        introduction
@@ -23,9 +23,9 @@ register_asset 'stylesheets/common.scss'
 ##
 
 # Executes after the discourse application is initialized
-after_initialize do
+after_initialize do 
   # Defines a module for the custom field
-  module ::TopicCustomFields
+  module ::TopicCustomFields 
     # Defines the custom field name & type for admins to set in the admin interface
     FIELD_NAME = SiteSetting.topic_custom_field_name
     FIELD_TYPE = SiteSetting.topic_custom_field_type
@@ -42,11 +42,11 @@ after_initialize do
   #              app/models/concerns/has_custom_fields.rb
   ##
   register_topic_custom_field_type(
-    # Registers the custom field name & type fom
+    # Registers the custom field name & type fom 
     TopicCustomFields::FIELD_NAME,
-    TopicCustomFields::FIELD_TYPE.to_sym
+    TopicCustomFields::FIELD_TYPE.to_sym,
   )
-
+  
   # Register the SVG field (always as a string type)
   register_topic_custom_field_type(
     TopicCustomFields::SVG_FIELD_NAME,
@@ -89,7 +89,7 @@ after_initialize do
   #              app/models/concerns/has_custom_fields.rb
   ##
   add_to_class(:topic, "#{TopicCustomFields::FIELD_NAME}=") do |value|
-    # Stores the custom field value in the custom_fields hash
+  # Stores the custom field value in the custom_fields hash
     custom_fields[TopicCustomFields::FIELD_NAME] = value
   end
 
@@ -115,7 +115,7 @@ after_initialize do
     topic.send(
       # Calls the setter method, passing the initial custom field value from opts
       "#{TopicCustomFields::FIELD_NAME}=".to_sym, #
-      opts[TopicCustomFields::FIELD_NAME.to_sym]
+      opts[TopicCustomFields::FIELD_NAME.to_sym],
     )
     topic.save!
   end
@@ -135,7 +135,7 @@ after_initialize do
     tc.record_change( # Logs the field's original and new values
       TopicCustomFields::FIELD_NAME,
       tc.topic.send(TopicCustomFields::FIELD_NAME),
-      value
+      value,
     )
     # Calls the setter method, passing the new custom field value
     tc.topic.send("#{TopicCustomFields::FIELD_NAME}=".to_sym, value.present? ? value : nil)

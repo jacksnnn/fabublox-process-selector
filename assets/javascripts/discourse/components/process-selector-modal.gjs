@@ -10,10 +10,12 @@ import DModal from "discourse/components/d-modal";
 export default class ProcessSelectorModal extends Component {
   @service siteSettings;
   @service currentUser;
+  @service site;
 
   @tracked loading = true;
   @tracked error = null;
   @tracked iframeUrl = null;
+  @tracked debugInfo = null;
 
   constructor() {
     super(...arguments);
@@ -23,26 +25,69 @@ export default class ProcessSelectorModal extends Component {
   async initializeSelector() {
     try {
       // Get the Auth0 token
-      const token = await extractTokenFromAuth0();
-
-      if (!token) {
-        this.error = "Authentication failed. Please try again.";
-        this.loading = false;
-        return;
+      let debugMessages = [];
+      debugMessages.push("Attempting to get Auth0 token...");
+      
+      // If running in development mode, you can use a demo token for testing
+      if (this.site.isDevMode) {
+        debugMessages.push("Running in development mode, will try to use demo token.");
+        if (!this.currentUser) {
+          this.error = "User is not logged in. Please log in to select a process.";
+          this.debugInfo = debugMessages.join("\n");
+          this.loading = false;
+          return;
+        }
+        
+        // In dev mode, use a fake token if real one can't be retrieved
+        try {
+          const token = await extractTokenFromAuth0();
+          if (token) {
+            debugMessages.push("Successfully got token from Auth0");
+            this.setupIframe(token, debugMessages);
+          } else {
+            debugMessages.push("Failed to get real token, using demo token for development");
+            // Use a fake demo token in development
+            const demoToken = `demo_${this.currentUser.username}_${Date.now()}`;
+            this.setupIframe(demoToken, debugMessages);
+          }
+        } catch (e) {
+          debugMessages.push(`Error extracting token: ${e.message}`);
+          // Use a fake demo token in development
+          const demoToken = `demo_${this.currentUser.username}_${Date.now()}`;
+          this.setupIframe(demoToken, debugMessages);
+        }
+      } else {
+        // Production mode: require a real token
+        const token = await extractTokenFromAuth0();
+        if (!token) {
+          this.error = "Authentication failed. Please try again.";
+          debugMessages.push("Failed to get Auth0 token");
+          this.debugInfo = debugMessages.join("\n");
+          this.loading = false;
+          return;
+        }
+        
+        debugMessages.push("Successfully got token from Auth0");
+        this.setupIframe(token, debugMessages);
       }
-
-      // Construct URL with token as a query parameter
-      const baseUrl = "https://www.fabublox.com/process-selector";
-      const url = new URL(baseUrl);
-      url.searchParams.append("token", token);
-      url.searchParams.append("origin", window.location.origin);
-
-      this.iframeUrl = url.toString();
-      this.loading = false;
-    } catch (_) {
+    } catch (e) {
       this.error = "Failed to initialize the process selector. Please try again.";
+      this.debugInfo = `Error: ${e.message}`;
       this.loading = false;
     }
+  }
+
+  setupIframe(token, debugMessages = []) {
+    // Construct URL with token as a query parameter
+    const baseUrl = "https://www.fabublox.com/process-selector";
+    const url = new URL(baseUrl);
+    url.searchParams.append("token", token);
+    url.searchParams.append("origin", window.location.origin);
+    
+    debugMessages.push(`Setting up iframe with URL parameters`);
+    this.debugInfo = debugMessages.join("\n");
+    this.iframeUrl = url.toString();
+    this.loading = false;
   }
 
   @action
@@ -81,6 +126,20 @@ export default class ProcessSelectorModal extends Component {
         {{else if this.error}}
           <div class="error-message">
             <p>{{this.error}}</p>
+            {{#if this.site.isDevMode}}
+              <div class="debug-info">
+                <details>
+                  <summary>Debug Information</summary>
+                  <pre>{{this.debugInfo}}</pre>
+                </details>
+              </div>
+            {{/if}}
+            <div class="retry-button">
+              <DButton
+                @action={{@closeModal}}
+                @label="Close"
+              />
+            </div>
           </div>
         {{else}}
           <div class="iframe-container">
@@ -93,6 +152,14 @@ export default class ProcessSelectorModal extends Component {
               {{on "message" this.handleMessage}}
             ></iframe>
           </div>
+          {{#if this.site.isDevMode}}
+            <div class="debug-info">
+              <details>
+                <summary>Debug Information</summary>
+                <pre>{{this.debugInfo}}</pre>
+              </details>
+            </div>
+          {{/if}}
         {{/if}}
       </:body>
 

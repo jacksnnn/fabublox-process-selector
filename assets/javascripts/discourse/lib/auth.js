@@ -4,34 +4,70 @@
  */
 export async function extractToken() {
   return new Promise((resolve, reject) => {
-    // In a real implementation, you would get this from your Auth0 integration
-    // This is a placeholder for how you would extract the token
+    // Try different methods to get the auth token
 
-    // Option 1: Use existing Auth0 plugin if available
+    // Option 1: Try to get the token from the session data
     try {
-      const auth0 = requirejs("discourse/plugins/discourse-auth0/api").getAuth0Instance();
-      if (auth0 && auth0.getTokenSilently) {
-        auth0.getTokenSilently().then(token => {
-          resolve(token);
-        }).catch(error => {
-          reject(new Error("Failed to get Auth0 token: " + error.message));
-        });
-        return;
+      const session = window.localStorage.getItem("discourse_oauth2_basic");
+      if (session) {
+        const sessionData = JSON.parse(session);
+        if (sessionData && sessionData.token) {
+          resolve(sessionData.token);
+          return;
+        }
       }
-    } catch (_) {
-      // Auth0 plugin not available, continue to fallback
+    } catch (e) {
+      void e; // Explicitly ignore error
+      // Unable to get token from session storage, continue to other methods
     }
 
-    // Option 2: Request token from server
-    fetch("/auth/auth0/token")
+    // Option 2: Try to get token from discourse_oauth2_user_token cookie
+    try {
+      const tokenCookie = document.cookie
+        .split("; ")
+        .find(row => row.startsWith("discourse_oauth2_user_token="));
+
+      if (tokenCookie) {
+        const token = tokenCookie.split("=")[1];
+        if (token) {
+          resolve(token);
+          return;
+        }
+      }
+    } catch (e) {
+      void e; // Explicitly ignore error
+      // Unable to get token from cookie, continue to other methods
+    }
+
+    // Option 3: Request a new token from the server
+    fetch("/session/current.json")
       .then(response => {
         if (response.ok) {
           return response.json();
         }
-        throw new Error("Failed to get token from server");
+        throw new Error("Failed to get current session data");
       })
       .then(data => {
-        resolve(data.token);
+        if (data && data.current_user && data.current_user.oauth2_user_info) {
+          resolve(data.current_user.oauth2_user_info.provider_token || null);
+          return;
+        }
+
+        // If we can't get the token from the user info, try to get it from the OAuth2 plugin
+        return fetch("/oauth2/token.json");
+      })
+      .then(response => {
+        if (response && response.ok) {
+          return response.json();
+        }
+        throw new Error("Failed to get token from OAuth2 endpoint");
+      })
+      .then(data => {
+        if (data && data.token) {
+          resolve(data.token);
+        } else {
+          reject(new Error("Token not found in response"));
+        }
       })
       .catch(error => {
         reject(new Error("Failed to get authentication token: " + error.message));
@@ -48,7 +84,8 @@ export async function extractToken() {
 export async function extractTokenFromAuth0() {
   try {
     return await extractToken();
-  } catch (_) {
+  } catch (e) {
+    void e; // Explicitly ignore error
     return null;
   }
 }

@@ -99,6 +99,35 @@
     text-align: center;
   }
   
+  .debug-info {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.9em;
+    
+    summary {
+      font-weight: bold;
+      cursor: pointer;
+      color: #6f42c1;
+    }
+    
+    pre {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      font-family: monospace;
+      text-align: left;
+    }
+  }
+  
+  .retry-button {
+    margin-top: 15px;
+  }
+  
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
