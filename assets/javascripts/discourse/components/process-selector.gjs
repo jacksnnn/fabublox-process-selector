@@ -21,7 +21,7 @@ export default class ProcessSelector extends Component {
     console.log("[ProcessSelector] Component initialized");
     console.log("[ProcessSelector] Initial fieldValue:", this.args.fieldValue);
     this.loadUserProcesses();
-    
+
     // If we already have a process ID, load its details
     if (this.args.fieldValue) {
       console.log("[ProcessSelector] Found existing fieldValue, loading process details");
