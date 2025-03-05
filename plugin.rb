@@ -29,50 +29,6 @@ after_initialize do
     # Defines the custom field name & type for admins to set in the admin interface
     FIELD_NAME = SiteSetting.topic_custom_field_name
     FIELD_TYPE = SiteSetting.topic_custom_field_type
-    SVG_FIELD_NAME = SiteSetting.topic_custom_field_svg_name
-  end
-
-  # Add a token endpoint for our process selector
-  Discourse::Application.routes.append do
-    get '/auth/fabublox/token' => 'discourse_process_url/auth#token'
-  end
-
-  module ::DiscourseProcessUrl
-    class AuthController < ::ApplicationController
-      requires_login
-      skip_before_action :check_xhr, only: [:token]
-      
-      def token
-        user = current_user
-        
-        # Only proceed if user is authenticated via oauth2
-        oauth2_user_info = UserAssociatedAccount.find_by(user_id: user.id, provider_name: "oauth2_basic")
-        
-        if oauth2_user_info && oauth2_user_info.extra
-          # Return the token if it's available
-          token_data = JSON.parse(oauth2_user_info.extra) rescue nil
-          
-          if token_data && token_data["token"]
-            render json: { token: token_data["token"] }
-            return
-          end
-        end
-        
-        # If we can't find an existing token, try to get one from the oauth2 settings
-        client_id = SiteSetting.oauth2_client_id
-        client_secret = SiteSetting.oauth2_client_secret
-        token_url = SiteSetting.oauth2_token_url
-        
-        if client_id.present? && client_secret.present? && token_url.present?
-          # This would require a server-side token request using the OAuth2 client credentials flow
-          # For security reasons, implement this based on your specific Auth0 requirements
-          render json: { error: "Token generation requires implementation of client credentials flow" }, status: 501
-          return
-        end
-        
-        render json: { error: "No valid token available" }, status: 404
-      end
-    end
   end
 
   ##
@@ -88,12 +44,6 @@ after_initialize do
     # Registers the custom field name & type fom 
     TopicCustomFields::FIELD_NAME,
     TopicCustomFields::FIELD_TYPE.to_sym,
-  )
-  
-  # Register the SVG field (always as a string type)
-  register_topic_custom_field_type(
-    TopicCustomFields::SVG_FIELD_NAME,
-    :string
   )
 
   ##
@@ -229,5 +179,98 @@ after_initialize do
   ##
   add_to_serializer(:topic_list_item, TopicCustomFields::FIELD_NAME.to_sym) do
     object.send(TopicCustomFields::FIELD_NAME)
+  end
+  
+  # Add the auth0_id to the current user serializer
+  add_to_serializer(:current_user, :auth0_id) do
+    object.custom_fields["auth0_id"]
+  end
+  
+  # Add API endpoints for Fabublox integration
+  require 'net/http'
+  require 'uri'
+  require 'json'
+  
+  # Define a module for the Fabublox API
+  module ::FabubloxApi
+    def self.fetch_user_processes(auth0_id)
+      uri = URI.parse("https://api.fabublox.com/processes/user/#{auth0_id}")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request["Content-Type"] = "application/json"
+      
+      response = http.request(request)
+      
+      if response.code == "200"
+        JSON.parse(response.body)
+      else
+        { error: "Failed to fetch processes", status: response.code }
+      end
+    end
+    
+    def self.fetch_process(process_id)
+      uri = URI.parse("https://api.fabublox.com/processes/#{process_id}")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request["Content-Type"] = "application/json"
+      
+      response = http.request(request)
+      
+      if response.code == "200"
+        JSON.parse(response.body)
+      else
+        { error: "Failed to fetch process", status: response.code }
+      end
+    end
+    
+    def self.fetch_process_svg(process_id)
+      uri = URI.parse("https://api.fabublox.com/processes/#{process_id}/svg")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request["Content-Type"] = "application/json"
+      
+      response = http.request(request)
+      
+      if response.code == "200"
+        JSON.parse(response.body)
+      else
+        { error: "Failed to fetch process SVG", status: response.code }
+      end
+    end
+  end
+  
+  # Register API endpoints
+  Discourse::Application.routes.append do
+    get "/fabublox/processes/user/:auth0_id" => "fabublox_api#user_processes", constraints: { auth0_id: /.*/ }
+    get "/fabublox/processes/:process_id" => "fabublox_api#process"
+    get "/fabublox/processes/:process_id/svg" => "fabublox_api#process_svg"
+  end
+  
+  # Create a controller for the Fabublox API
+  class ::FabubloxApiController < ::ApplicationController
+    requires_plugin 'discourse-topic-custom-fields'
+    
+    skip_before_action :check_xhr, only: [:user_processes, :process, :process_svg]
+    
+    def user_processes
+      auth0_id = params[:auth0_id]
+      render json: FabubloxApi.fetch_user_processes(auth0_id)
+    end
+    
+    def process
+      process_id = params[:process_id]
+      render json: FabubloxApi.fetch_process(process_id)
+    end
+    
+    def process_svg
+      process_id = params[:process_id]
+      render json: FabubloxApi.fetch_process_svg(process_id)
+    end
   end
 end

@@ -1,6 +1,5 @@
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
-import { htmlSafe } from "@ember/template";
 
 export default class TopicListCustomField extends Component {
   @service siteSettings;
@@ -9,25 +8,8 @@ export default class TopicListCustomField extends Component {
     return this.siteSettings.topic_custom_field_name;
   }
 
-  get svgFieldName() {
-    return this.siteSettings.topic_custom_field_svg_name;
-  }
-
   get fieldValue() {
     return this.args.topic?.[this.fieldName];
-  }
-
-  get svgContent() {
-    // Get the custom SVG content if it exists
-    const svgContent = this.args.topic?.[this.svgFieldName];
-
-    // If we have custom SVG content, return it as HTML safe
-    if (svgContent) {
-      return htmlSafe(svgContent);
-    }
-
-    // Otherwise return null to use default
-    return null;
   }
 
   get showCustomField() {
@@ -40,9 +22,7 @@ export default class TopicListCustomField extends Component {
   }
 
   get fieldUrl() {
-    if (!this.fieldValue) {
-      return null;
-    }
+    if (!this.fieldValue) return null;
 
     // If it's already a valid process ID, use it directly
     if (this.isValidProcessId(this.fieldValue)) {
@@ -63,42 +43,38 @@ export default class TopicListCustomField extends Component {
   <template>
     {{#if this.showCustomField}}
       <a href={{this.fieldUrl}} target="_blank" class="referenced-button">
-        {{#if this.svgContent}}
-          {{this.svgContent}}
-        {{else}}
-          <svg xmlns="http://www.w3.org/2000/svg" id="svg5"
-          viewBox="0 0 346.76 286.46" class="referenced-icon">
-            <defs>
-              <style>
-                .cls-1 {
-                  stroke: #606f7e;
-                }
-                .cls-1, .cls-2 {
-                  stroke-width: 22.68px;
-                }
-                .cls-1, .cls-2, .cls-3 {
-                  fill: none;
-                  stroke-linecap: round;
-                  stroke-linejoin: round;
-                }
-                .cls-2 {
-                  stroke: #000;
-                }
-                .cls-3 {
-                  stroke: #764d82;
-                  stroke-width: 22.68px;
-                }
-              </style>
-            </defs>
-            <g id="layer1">
-              <path id="path6303" class="cls-2" d="M335.42,86.9L173.38,11.34,11.34,86.9l162.04,75.56,162.04-75.56Z"/>
-              <path id="path6311" class="cls-1" d="M11.34,124.45l162.04,75.56,162.04-75.56"/>
-              <path id="path6313" class="cls-3" d="M11.34,162.01l162.04,75.56,162.04-75.56"/>
-              <path id="path6315" class="cls-2" d="M11.34,199.56l162.04,75.56,162.04-75.56"/>
-            </g>
-          </svg>
-        {{/if}}
+        <svg xmlns="http://www.w3.org/2000/svg" id="svg5" 
+        viewBox="0 0 346.76 286.46" class="referenced-icon">
+          <defs>
+            <style>
+              .cls-1 {
+                stroke: #606f7e;
+              }
+              .cls-1, .cls-2 {
+                stroke-width: 22.68px;
+              }
+              .cls-1, .cls-2, .cls-3 {
+                fill: none;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+              }
+              .cls-2 {
+                stroke: #000;
+              }
+              .cls-3 {
+                stroke: #764d82;
+                stroke-width: 22.68px;
+              }
+            </style>
+          </defs>
+          <g id="layer1">
+            <path id="path6303" class="cls-2" d="M335.42,86.9L173.38,11.34,11.34,86.9l162.04,75.56,162.04-75.56Z"/>
+            <path id="path6311" class="cls-1" d="M11.34,124.45l162.04,75.56,162.04-75.56"/>
+            <path id="path6313" class="cls-3" d="M11.34,162.01l162.04,75.56,162.04-75.56"/>
+            <path id="path6315" class="cls-2" d="M11.34,199.56l162.04,75.56,162.04-75.56"/>
+          </g>
+        </svg>
       </a>
     {{/if}}
   </template>
-}
+} 

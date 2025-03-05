@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { inject as controller } from "@ember/controller";
 import { alias } from "@ember/object/computed";
 import { service } from "@ember/service";
+import { tracked } from "@glimmer/tracking";
 import { htmlSafe } from "@ember/template";
 
 /*
@@ -15,26 +16,20 @@ import { htmlSafe } from "@ember/template";
 
 export default class TopicCustomFieldTopicTitle extends Component {
   @service siteSettings;
-  @service store;
+  @service fabubloxApi;
   @controller topic;
   @alias("siteSettings.topic_custom_field_name") fieldName;
-  @alias("siteSettings.topic_custom_field_svg_name") fieldSvgName;
+  @tracked processSvg = null;
+  @tracked processData = null;
+  @tracked isLoading = false;
 
-  get fieldValue() {
-    return this.topic?.model?.[this.fieldName];
+  constructor() {
+    super(...arguments);
+    this.loadProcessData();
   }
 
-  get svgContent() {
-    // Get the custom SVG content if it exists
-    const svgContent = this.topic?.model?.[this.fieldSvgName];
-
-    // If we have custom SVG content, return it as HTML safe
-    if (svgContent) {
-      return htmlSafe(svgContent);
-    }
-
-    // Otherwise return the default SVG (could be moved to a separate template)
-    return null;
+  get fieldValue() {
+    return this.args.outletArgs.model.get(this.fieldName); 
   }
 
   isValidProcessId(str) {
@@ -43,14 +38,12 @@ export default class TopicCustomFieldTopicTitle extends Component {
     return uuidRegex.test(str);
   }
 
-  get fieldUrl() {
-    if (!this.fieldValue) {
-      return null;
-    }
+  get processId() {
+    if (!this.fieldValue) return null;
 
     // If it's already a valid process ID, use it directly
     if (this.isValidProcessId(this.fieldValue)) {
-      return `https://www.fabublox.com/process-editor/${this.fieldValue}`;
+      return this.fieldValue;
     }
 
     // If it's a full URL, extract and validate the process ID
@@ -58,9 +51,45 @@ export default class TopicCustomFieldTopicTitle extends Component {
     const lastPart = parts[parts.length - 1];
 
     if (this.isValidProcessId(lastPart)) {
-      return `https://www.fabublox.com/process-editor/${lastPart}`;
+      return lastPart;
     }
 
-    return this.fieldValue; // Return the original value if it doesn't match patterns
+    return null;
+  }
+
+  get fieldUrl() {
+    const processId = this.processId;
+    if (!processId) return null;
+    
+    return `https://www.fabublox.com/process-editor/${processId}`;
+  }
+  
+  get processName() {
+    return this.processData?.processName || "View Process";
+  }
+  
+  get svgContent() {
+    return this.processSvg ? htmlSafe(this.processSvg) : null;
+  }
+  
+  async loadProcessData() {
+    const processId = this.processId;
+    if (!processId) return;
+    
+    this.isLoading = true;
+    
+    try {
+      // Fetch process data
+      const processData = await this.fabubloxApi.fetchProcessById(processId);
+      this.processData = processData;
+      
+      // Fetch SVG preview
+      const svg = await this.fabubloxApi.getProcessSvgPreview(processId);
+      this.processSvg = svg;
+    } catch (error) {
+      console.error("Error loading process data:", error);
+    } finally {
+      this.isLoading = false;
+    }
   }
 }

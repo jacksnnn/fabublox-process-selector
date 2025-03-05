@@ -15,6 +15,30 @@
   width: 465px;
 }
 
+// Process reference styling
+.process-reference {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.process-preview {
+  margin-right: 10px;
+  
+  .process-svg {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+  }
+}
+
 // A custom button for the referenced process with a transparent background and a purple outline
 // /connectors/topic-title/topic-custom-field-topic-title.hbs
 .referenced-button {
@@ -45,91 +69,128 @@
   height: 30px;
 }
 
-// New styles for the process selector
-.process-selector-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.process-selector-button {
-  background-color: #6f42c1;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: #5a32ab;
-  }
-}
-
-.process-selector-modal {
-  .iframe-container {
-    width: 100%;
-    height: 400px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
+// Process selector styling
+.process-selector {
+  position: relative;
+  width: 100%;
+  
+  .add-process-btn, .change-process-btn {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 8px 12px;
+    
+    &:hover {
+      background-color: #e0e0e0;
+    }
   }
   
-  .loading-spinner {
+  .selected-process {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 200px;
+    margin-bottom: 10px;
     
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #6f42c1;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
+    .process-preview {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      .process-svg {
+        width: 100%;
+        height: 100%;
+        
+        svg {
+          max-width: 100%;
+          max-height: 100%;
+        }
+      }
+      
+      .process-placeholder {
+        width: 100%;
+        height: 100%;
+        background-color: #f5f5f5;
+      }
+    }
+    
+    .process-info {
+      flex: 1;
+      
+      .process-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
     }
   }
   
-  .error-message {
-    padding: 20px;
-    color: #e45735;
-    text-align: center;
-  }
-  
-  .debug-info {
-    margin-top: 15px;
-    padding: 10px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    font-size: 0.9em;
+  .process-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-width: 500px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
     
-    summary {
-      font-weight: bold;
-      cursor: pointer;
-      color: #6f42c1;
-    }
-    
-    pre {
-      margin-top: 10px;
+    .dropdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding: 10px;
-      background-color: #f0f0f0;
-      border-radius: 4px;
-      white-space: pre-wrap;
-      overflow-x: auto;
-      font-family: monospace;
-      text-align: left;
+      border-bottom: 1px solid #eee;
+      
+      h3 {
+        margin: 0;
+        font-size: 16px;
+      }
     }
-  }
-  
-  .retry-button {
-    margin-top: 15px;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    
+    .process-list {
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      
+      .process-item {
+        display: flex;
+        align-items: center;
+        padding: 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        
+        &:hover {
+          background-color: #f5f5f5;
+        }
+        
+        .process-item-preview {
+          width: 40px;
+          height: 40px;
+          margin-right: 10px;
+          border: 1px solid #ddd;
+          border-radius: 3px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .process-item-name {
+          flex: 1;
+        }
+      }
+      
+      .no-processes {
+        padding: 20px;
+        text-align: center;
+        color: #888;
+      }
+    }
   }
 }
