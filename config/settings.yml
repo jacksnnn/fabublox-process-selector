@@ -14,3 +14,7 @@ plugins:
       - integer
       - boolean
       - json
+  fabublox_api_base_url:
+    default: 'https://api.fabublox.com'
+    client: true
+    description: 'Base URL for the Fabublox API'

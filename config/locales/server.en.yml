@@ -3,3 +3,4 @@ en:
     topic_custom_field_enabled: Enable your topic custom field.
     topic_custom_field_name: Name of your topic custom field.
     topic_custom_field_type: Type of your topic custom field.
+    fabublox_api_base_url: Base URL for the Fabublox API (e.g., https://api.fabublox.com).

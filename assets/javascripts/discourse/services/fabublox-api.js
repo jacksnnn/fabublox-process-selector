@@ -1,54 +1,75 @@
-import Service from "@ember/service";
-import { service } from "@ember/service";
+import Service, { service } from "@ember/service";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
 
 export default class FabubloxApi extends Service {
   @service currentUser;
+  @service siteSettings;
 
-  apiBaseUrl = "https://api.fabublox.com";
+  get apiBaseUrl() {
+    return this.siteSettings.fabublox_api_base_url;
+  }
+
+  // Get the Auth0 token for the current user
+  async getAuth0Token() {
+    try {
+      const result = await ajax("/fabublox/current_user_token");
+      return result.token;
+    } catch (error) {
+      this._logError("Error fetching Auth0 token:", error);
+      return null;
+    }
+  }
+
+  // Make an authenticated API request
+  async authenticatedRequest(endpoint, params = {}) {
+    try {
+      this._logWarning(`Making authenticated request to: ${endpoint}`);
+
+      // Make sure the endpoint is properly formatted
+      const formattedEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+
+      const data = {
+        endpoint: formattedEndpoint,
+        ...params
+      };
+
+      const result = await ajax("/fabublox/authenticated_request", {
+        type: "POST",
+        data
+      });
+
+      return result;
+    } catch (error) {
+      this._logError(`Error making authenticated request to ${endpoint}:`, error);
+      popupAjaxError(error);
+      return null;
+    }
+  }
 
   // Fetch processes for the current user
   async fetchUserProcesses() {
-    if (!this.currentUser) {
-      return [];
-    }
-
     try {
-      // Get the user's auth0 ID from Discourse
-      const auth0Id = this.currentUser.custom_fields?.auth0_id;
+      // First try to get the user's Auth0 ID from their profile
+      if (this.currentUser) {
+        // Try to make an authenticated request to get the user's processes
+        const processes = await this.authenticatedRequest("processes/user");
+        if (processes) {
+          return processes;
+        }
+      }
 
+      // Fallback to the old method if authenticated request fails
+      const auth0Id = this.currentUser?.auth0_id;
       if (!auth0Id) {
-        // eslint-disable-next-line no-console
-        console.error("[FabubloxApi] User not authenticated with Auth0");
+        this._logWarning("No Auth0 ID found for user");
         return [];
       }
 
-      // Call the Fabublox API to get the user's processes
-      const response = await ajax(`${this.apiBaseUrl}/user/processes/${auth0Id}`, {
-        type: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      // Sort processes by lastUpdatedAt (most recent first)
-      const sortedProcesses = response.sort((a, b) => {
-        return new Date(b.lastUpdatedAt) - new Date(a.lastUpdatedAt);
-      });
-
-      // Map the response to the format expected by the UI
-      return sortedProcesses.map(process => ({
-        processId: process.processId,
-        processName: process.processName,
-        description: process.desc || "",
-        lastUpdatedAt: process.lastUpdatedAt,
-        isPrivate: process.isPrivate
-      }));
-
+      const response = await ajax(`/fabublox/user_processes/${encodeURIComponent(auth0Id)}`);
+      return response || [];
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[FabubloxApi] Error fetching user processes:", error);
+      this._logError("Error fetching user processes:", error);
       popupAjaxError(error);
       return [];
     }
@@ -57,30 +78,22 @@ export default class FabubloxApi extends Service {
   // Fetch a single process by ID
   async fetchProcessById(processId) {
     if (!processId) {
+      this._logWarning("No process ID provided");
       return null;
     }
 
     try {
-      // Call the Fabublox API to get the process details
-      const response = await ajax(`${this.apiBaseUrl}/user/process/${processId}`, {
-        type: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Try authenticated request first
+      const process = await this.authenticatedRequest(`processes/${processId}`);
+      if (process) {
+        return process;
+      }
 
-      // Map the response to the format expected by the UI
-      return {
-        processId: response.processId,
-        processName: response.processName,
-        description: response.desc || "",
-        lastUpdatedAt: response.lastUpdatedAt,
-        isPrivate: response.isPrivate
-      };
-
+      // Fallback to unauthenticated request
+      const response = await ajax(`/fabublox/process/${processId}`);
+      return response;
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[FabubloxApi] Error fetching process by ID:", error);
+      this._logError(`Error fetching process ${processId}:`, error);
       popupAjaxError(error);
       return null;
     }
@@ -89,43 +102,34 @@ export default class FabubloxApi extends Service {
   // Generate SVG preview for a process
   async getProcessSvgPreview(processId) {
     if (!processId) {
+      this._logWarning("No process ID provided for SVG preview");
       return null;
     }
 
     try {
-      // First, try to get the process details which includes the thumbnail
-      const processResponse = await ajax(`${this.apiBaseUrl}/user/process/${processId}`, {
-        type: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      // If the process has a thumbnail, use it
-      if (processResponse.thumbnail) {
-        return processResponse.thumbnail;
+      // Try authenticated request first
+      const svg = await this.authenticatedRequest(`processes/${processId}/svg`);
+      if (svg) {
+        return svg;
       }
 
-      // Otherwise, generate a placeholder SVG
-      return `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100" height="100" fill="#f0f0f0" />
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="14">
-          ${processId.substring(0, 8)}
-        </text>
-      </svg>`;
-
+      // Fallback to unauthenticated request
+      const response = await ajax(`/fabublox/process_svg/${processId}`);
+      return response;
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[FabubloxApi] Error getting SVG preview:", error);
-      popupAjaxError(error);
-
-      // Return a placeholder SVG if there's an error
-      return `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100" height="100" fill="#f0f0f0" />
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="14">
-          No Preview
-        </text>
-      </svg>`;
+      this._logError(`Error fetching SVG for process ${processId}:`, error);
+      return null;
     }
+  }
+
+  // Helper methods for logging
+  _logError(message, error) {
+    // eslint-disable-next-line no-console
+    console.error(`[FabubloxApi] ${message}`, error);
+  }
+
+  _logWarning(message) {
+    // eslint-disable-next-line no-console
+    console.warn(`[FabubloxApi] ${message}`);
   }
 }
